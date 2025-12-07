@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+    <title>本周TakeOut早餐菜单</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Malgun Gothic",sans-serif}
+        html,body{height:100%}
+        body{display:flex;flex-direction:column;background:#f5f7fa}
+        header{flex-shrink:0;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.08);padding:10px 12px;display:flex;align-items:center;justify-content:center}
+        header h1{font-size:clamp(22px,5.5vw,30px);font-weight:700;color:#333;text-shadow:0 2px 4px rgba(0,0,0,.15)}
+        main{flex:1;display:flex;overflow:hidden}
+        /* 左侧日期选项卡 */
+        .tabs{display:flex;flex-direction:column;min-width:90px;background:#fff;box-shadow:3px 0 8px rgba(0,0,0,.08)}
+        .tab{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;border:none;outline:none;cursor:pointer;padding:6px 0;transition:transform .2s;box-shadow:inset 0 0 8px rgba(0,0,0,.2)}
+        .tab:active{transform:scale(.96)}
+        .tab small{display:block;font-size:14px;margin-bottom:3px}
+        .tab .count{font-size:13px;opacity:.9}
+        .tab.active{transform:scale(1.05);z-index:10}
+        .tab.active::after{content:'';position:absolute;right:-2px;top:50%;transform:translateY(-50%);width:6px;height:65%;background:#fff;border-radius:3px 0 0 3px}
+        /* 右侧内容 */
+        .content{flex:1;padding:10px;overflow-y:auto}
+        .day-panel{display:none}
+        .day-panel.active{display:block}
+        .card{margin-bottom:14px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+        .card-header{display:flex;align-items:center;font-size:18px;font-weight:700;padding:10px 12px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+        .card-body{font-size:17px;line-height:1.65;color:#222;padding:10px 12px}
+        /* 星期颜色 */
+        .mon{background:linear-gradient(135deg,#ff6b6b,#ff4d4f)}
+        .tue{background:linear-gradient(135deg,#ffa94d,#ff8c00)}
+        .wed{background:linear-gradient(135deg,#ffd43b,#fab005)}
+        .thu{background:linear-gradient(135deg,#51cf66,#37b24d)}
+        .fri{background:linear-gradient(135deg,#339af0,#1c7ed6)}
+        /* 类别颜色 */
+        .点心{background:#ff6b6b}
+        .蛋{background:#ffa94d}
+        .粥{background:#ffd43b;color:#111}
+        .奶{background:#51cf66}
+        .小菜{background:#845ef7}
+        .footer{font-size:12px;color:#999;text-align:center;padding:10px}
+    </style>
+</head>
+<body>
+<header>
+    <h1>本周TakeOut早餐菜单</h1>
+</header>
+<main>
+    <!-- 左侧日期选项卡 -->
+    <nav class="tabs" id="dayTabs"></nav>
+    <!-- 右侧内容 -->
+    <section class="content" id="content"></section>
+</main>
+<footer class="footer">此数据通过AI大模型自动转换，如果存在数据错误请理解和反馈工会！</footer>
+
+<script>
+/* Excel 序列号转日期（以 1900-01-01 为基准） */
+function serialToDate(n){
+    const utc=new Date(Date.UTC(1900,0,n-1));
+    return utc.toISOString().slice(0,10);
+}
+/* 原始数据（与 Excel 内日期保持一致） */
+const raw = [
+    {day:'星期一',date:serialToDate(45999),count:320,点心:'烧卖三鲜蒸饺（双拼）',蛋:'白煮蛋',粥:'雪菜肉末粥',奶:'蒙牛纯牛奶',小菜:''},
+    {day:'星期二',date:serialToDate(46000),count:340,点心:'荠菜肉包、香酥肉饼',蛋:'白煮蛋',粥:'黑米粥',奶:'蒙牛纯牛奶',小菜:'酱瓜'},
+    {day:'星期三',date:serialToDate(46001),count:320,点心:'清美牛奶吐司面包、烤红薯',蛋:'茶叶蛋',粥:'山药肉末粥',奶:'卡士酸奶',小菜:''},
+    {day:'星期四',date:serialToDate(46002),count:330,点心:'南瓜豆沙包、三色鸡蛋饼&自制',蛋:'白煮蛋',粥:'小米粥',奶:'蒙牛纯牛奶',小菜:'萝卜干'},
+    {day:'星期五',date:serialToDate(46003),count:340,点心:'奥尔良鸡肉三明治',蛋:'茶叶蛋',粥:'皮蛋肉末粥',奶:'卫岗酸奶',小菜:''}
+];
+
+const clsMap={'星期一':'mon','星期二':'tue','星期三':'wed','星期四':'thu','星期五':'fri'};
+const categories=['点心','蛋','粥','奶','小菜'];
+
+/* 渲染左侧日期选项卡 */
+const dayTabs=document.getElementById('dayTabs');
+const content=document.getElementById('content');
+raw.forEach(d=>{
+    const tab=document.createElement('button');
+    tab.className=`tab ${clsMap[d.day]}`;
+    tab.innerHTML=`<small>${d.date.slice(5)}</small>${d.day.slice(-1)}<div class="count">${d.count}份</div>`;
+    tab.dataset.day=d.day;
+    tab.onclick=()=>switchDay(d.day);
+    dayTabs.appendChild(tab);
+});
+
+/* 渲染右侧内容 */
+function renderDay(day){
+    const item=raw.find(r=>r.day===day);
+    let html='';
+    categories.forEach(cat=>{
+        const txt=(item[cat] && item[cat].trim()) || '(无)';
+        html+=`<div class="card">
+            <div class="card-header ${cat}">${cat}</div>
+            <div class="card-body">${txt}</div>
+        </div>`;
+    });
+    return html;
+}
+
+function switchDay(day){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelector(`.tab[data-day="${day}"]`).classList.add('active');
+    if(!document.querySelector(`.day-panel[data-day="${day}"]`)){
+        const panel=document.createElement('div');
+        panel.className='day-panel';
+        panel.dataset.day=day;
+        panel.innerHTML=renderDay(day);
+        content.appendChild(panel);
+    }
+    document.querySelectorAll('.day-panel').forEach(p=>p.classList.remove('active'));
+    document.querySelector(`.day-panel[data-day="${day}"]`).classList.add('active');
+}
+/* 默认显示星期一 */
+switchDay('星期一');
+</script>
+</body>
+</html>
